@@ -27,27 +27,31 @@
 #include <AccelStepper.h>
 #include <ESP32Encoder.h>
 #include <U8g2lib.h>
+#include <Display.h>
+#include <Motor.h>
+#include <Sensors.h>
+#include <Settings.h>
+#include <UserInput.h>
 
-#define EN_PIN    36 //enable (CFG6)
-#define PIN_STEP      12
-#define PIN_DIRECTION 13
+#define PIN_STEP      19
+#define PIN_DIRECTION 15
 
-#define PIN_BUTTON_UP          21
-#define PIN_BUTTON_DOWN        19
-#define PIN_BUTTON_TOOLCHANGE  18
-#define PIN_BUTTON_SET_ZERO    5
-#define PIN_BUTTON_SET_SPEED    17
-#define PIN_BUTTON_GOTO_BOTTOM 16
+#define PIN_BUTTON_UP          23
+#define PIN_BUTTON_DOWN        18
+#define PIN_BUTTON_TOOLCHANGE  32
+#define PIN_BUTTON_SET_ZERO    13
+#define PIN_BUTTON_SET_SPEED    4
+#define PIN_BUTTON_GOTO_BOTTOM 25
 
 #define PIN_ENCODER_A_MINUS 14
 #define PIN_ENCODER_B_MINUS 27
 
-#define PIN_ICC_DATA 22
-#define PIN_ICC_CLOCK 23
+#define PIN_ICC_DATA 21
+#define PIN_ICC_CLOCK 22
 
-#define PIN_SENSOR_END_STOP_TRIGGER    33
-#define PIN_SENSOR_TOOL_LENGTH_TRIGGER 25
-#define PIN_SENSOR_TOOL_LENGTH_ENABLED  26
+#define PIN_SENSOR_END_STOP_TRIGGER    16
+#define PIN_SENSOR_TOOL_LENGTH_TRIGGER 17
+#define PIN_SENSOR_TOOL_LENGTH_ENABLED  5
 
 #define DURATION_BUTTON_HOLD   750 // [ms]
 
@@ -70,7 +74,6 @@ Preferences preferences;
 AccelStepper stepper(AccelStepper::DRIVER, PIN_STEP, PIN_DIRECTION);
 
 ESP32Encoder encoder;
-//ESP32Encoder handRad;
 
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C display_I2C(U8G2_R0, U8X8_PIN_NONE, PIN_ICC_CLOCK, PIN_ICC_DATA);
 // PERIPHERY END
@@ -122,14 +125,8 @@ bool input_goto_bottom_release = true;
 long input_encoder_steps = 0; // is non-zero when encoder steps occurred since last input processing
 // INPUT VALUES END
 
-// *********************************** Handrad **********************************
-float         handRadMultiplier = 1;// 0.25; // HandradSteps -> MotorSteps & Einstellungssteps (Anzeige *4)
-bool          handRadMode = true; // Position über Handrad
-int64_t       handRadValue = 0; // hier wird die vorherige Position von Handrad geladen, bevor Settings
-int           handWheelFactor = 0; // hier werden die Slow/Fast Variablen reingeladen
-
 // PREFERENCE VALUES START
-long  default_motor_steps_per_revolution = 400  ; // [steps per revolution]
+long  default_motor_steps_per_revolution = 1600  ; // [steps per revolution]
 float default_motor_thread_pitch         =    8.0; // [mm per revolution]
 long  default_motor_steps_slow           = round(0.05 / (default_motor_thread_pitch / default_motor_steps_per_revolution))  ; // [steps per encoder step]
 long  default_motor_steps_fast           = round(1.0 / (default_motor_thread_pitch / default_motor_steps_per_revolution))  ; // [steps per encoder step]
@@ -138,7 +135,7 @@ long  default_motor_speed_maximal        = default_motor_steps_per_revolution  ;
 long  default_motor_speed_toolchange     = default_motor_steps_per_revolution  ; // [steps per second]
 long  default_motor_acceleration         = default_motor_steps_per_revolution >> 2  ; // [steps per second per second]
 
-bool  default_sensor_end_stop_normally_closed = true;
+bool  default_sensor_end_stop_normally_closed = false;
 
 bool  default_sensor_tool_length_enabled_normally_closed = false;
 bool  default_sensor_tool_length_normally_closed = false;
@@ -188,7 +185,7 @@ long  status_workspace_lower_limit = 0; // steps
 long status_settings_menu_active_page =  0;
 long status_settings_menu_pages_count = 15;
 
-const char *status_error_message = "";
+char *status_error_message = "";
 // STATUS VALUES END
 
 // COMPUTED VALUES START
@@ -203,9 +200,7 @@ float position_in_mm() {
 
 void setup() {
   Serial.begin(115200);
-  pinMode(EN_PIN, OUTPUT);
-  digitalWrite(EN_PIN, HIGH); //deactivate driver (LOW active)  
-  digitalWrite(EN_PIN, LOW); //activate driver
+
   pinMode(PIN_STEP, OUTPUT);
   pinMode(PIN_DIRECTION,  OUTPUT);
 
@@ -234,8 +229,7 @@ void setup() {
 
   // ENCODER SETUP START
   ESP32Encoder::useInternalWeakPullResistors = UP;
-  //encoder.attachHalfQuad(PIN_ENCODER_A_MINUS, PIN_ENCODER_B_MINUS);
-  encoder.attachSingleEdge(PIN_ENCODER_A_MINUS, PIN_ENCODER_B_MINUS);
+  encoder.attachHalfQuad(PIN_ENCODER_A_MINUS, PIN_ENCODER_B_MINUS);
   encoder.clearCount();
   // ENCODER SETUP END
 
@@ -548,7 +542,7 @@ void set_zero() {
   stepper.setCurrentPosition(0);
 }
 
-void error_with(const char *error_message) {
+void error_with(char *error_message) {
   Serial.println("Error: " + String(error_message));
   status_error_message = error_message;
   current_state = error;
