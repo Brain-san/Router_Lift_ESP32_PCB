@@ -29,29 +29,11 @@
 #include <U8g2lib.h>
 #include <Display.h>
 #include <Motor.h>
+#include <PinDefinitions.h>
+//#include <PinDefinitions_smd.h>
 #include <Sensors.h>
 #include <Settings.h>
 #include <UserInput.h>
-
-#define PIN_STEP      19
-#define PIN_DIRECTION 15
-
-#define PIN_BUTTON_UP          23
-#define PIN_BUTTON_DOWN        18
-#define PIN_BUTTON_TOOLCHANGE  32
-#define PIN_BUTTON_SET_ZERO    13
-#define PIN_BUTTON_SET_SPEED    4
-#define PIN_BUTTON_GOTO_BOTTOM 25
-
-#define PIN_ENCODER_A_MINUS 14
-#define PIN_ENCODER_B_MINUS 27
-
-#define PIN_ICC_DATA 21
-#define PIN_ICC_CLOCK 22
-
-#define PIN_SENSOR_END_STOP_TRIGGER    16
-#define PIN_SENSOR_TOOL_LENGTH_TRIGGER 17
-#define PIN_SENSOR_TOOL_LENGTH_ENABLED  5
 
 #define DURATION_BUTTON_HOLD   750 // [ms]
 
