@@ -27,6 +27,11 @@
 #include <AccelStepper.h>
 #include <ESP32Encoder.h>
 #include <U8g2lib.h>
+#include <Display.h>
+#include <Motor.h>
+#include <Sensors.h>
+#include <Settings.h>
+#include <UserInput.h>
 
 #define PIN_STEP      19
 #define PIN_DIRECTION 15
