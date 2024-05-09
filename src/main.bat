@@ -22,18 +22,19 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-
+#include <Arduino.h>
 #include <Preferences.h>
 #include <AccelStepper.h>
 #include <ESP32Encoder.h>
 #include <U8g2lib.h>
-#include <Display.h>
-#include <Motor.h>
-#include <PinDefinitions.h>
+#include "Display.h"
+#include "Motor.h"
+#include "PinDefinitions.h"
 //#include <PinDefinitions_smd.h>
-#include <Sensors.h>
-#include <Settings.h>
-#include <UserInput.h>
+#include "Sensors.h"
+#include "Settings.h"
+#include "UserInput.h"
+#include "StateMachine.h"
 
 #define DURATION_BUTTON_HOLD   750 // [ms]
 
@@ -56,6 +57,7 @@ Preferences preferences;
 AccelStepper stepper(AccelStepper::DRIVER, PIN_STEP, PIN_DIRECTION);
 
 ESP32Encoder encoder;
+//ESP32Encoder handRad;
 
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C display_I2C(U8G2_R0, U8X8_PIN_NONE, PIN_ICC_CLOCK, PIN_ICC_DATA);
 // PERIPHERY END
@@ -70,20 +72,6 @@ float pos_in_mm = 0.0; // holds computed value
 long  start_pos = 0  ; // for error detection
 long  max_pos   = 0  ; // for error detection
 // MISC. VARIABLES END
-
-// STATE MACHINE STUFF START
-enum states {
-  default_start,
-  goto_tool_length_sensor,
-  finish_tool_length_sensor,
-  goto_toolchange,
-  finish_toolchange,
-  settings_menu,
-  reset,
-  error
-};
-enum states current_state = default_start;
-// STATE MACHINE STUFF END
 
 // INPUT VALUES START
 bool input_up_press   = false;
@@ -107,8 +95,14 @@ bool input_goto_bottom_release = true;
 long input_encoder_steps = 0; // is non-zero when encoder steps occurred since last input processing
 // INPUT VALUES END
 
+// *********************************** Handrad **********************************
+float         handRadMultiplier = 1;// 0.25; // HandradSteps -> MotorSteps & Einstellungssteps (Anzeige *4)
+bool          handRadMode = true; // Position über Handrad
+int64_t       handRadValue = 0; // hier wird die vorherige Position von Handrad geladen, bevor Settings
+int           handWheelFactor = 0; // hier werden die Slow/Fast Variablen reingeladen
+
 // PREFERENCE VALUES START
-long  default_motor_steps_per_revolution = 1600  ; // [steps per revolution]
+long  default_motor_steps_per_revolution = 400  ; // [steps per revolution]
 float default_motor_thread_pitch         =    8.0; // [mm per revolution]
 long  default_motor_steps_slow           = round(0.05 / (default_motor_thread_pitch / default_motor_steps_per_revolution))  ; // [steps per encoder step]
 long  default_motor_steps_fast           = round(1.0 / (default_motor_thread_pitch / default_motor_steps_per_revolution))  ; // [steps per encoder step]
@@ -117,7 +111,7 @@ long  default_motor_speed_maximal        = default_motor_steps_per_revolution  ;
 long  default_motor_speed_toolchange     = default_motor_steps_per_revolution  ; // [steps per second]
 long  default_motor_acceleration         = default_motor_steps_per_revolution >> 2  ; // [steps per second per second]
 
-bool  default_sensor_end_stop_normally_closed = false;
+bool  default_sensor_end_stop_normally_closed = true;
 
 bool  default_sensor_tool_length_enabled_normally_closed = false;
 bool  default_sensor_tool_length_normally_closed = false;
@@ -167,7 +161,7 @@ long  status_workspace_lower_limit = 0; // steps
 long status_settings_menu_active_page =  0;
 long status_settings_menu_pages_count = 15;
 
-char *status_error_message = "";
+const char* status_error_message = "";
 // STATUS VALUES END
 
 // COMPUTED VALUES START
@@ -182,7 +176,9 @@ float position_in_mm() {
 
 void setup() {
   Serial.begin(115200);
-
+  pinMode(EN_PIN, OUTPUT);
+  digitalWrite(EN_PIN, HIGH); //deactivate driver (LOW active)  
+  digitalWrite(EN_PIN, LOW); //activate driver
   pinMode(PIN_STEP, OUTPUT);
   pinMode(PIN_DIRECTION,  OUTPUT);
 
@@ -199,7 +195,7 @@ void setup() {
 
   // PREFERENCES SETUP START
   preferences.begin("settings", false);
-  read_settings();
+  read_settings(preferences);
   // PREFERENCES SETUP END
 
   // STEPPER MOTOR SETUP START
@@ -211,7 +207,8 @@ void setup() {
 
   // ENCODER SETUP START
   ESP32Encoder::useInternalWeakPullResistors = UP;
-  encoder.attachHalfQuad(PIN_ENCODER_A_MINUS, PIN_ENCODER_B_MINUS);
+  //encoder.attachHalfQuad(PIN_ENCODER_A_MINUS, PIN_ENCODER_B_MINUS);
+  encoder.attachSingleEdge(PIN_ENCODER_A_MINUS, PIN_ENCODER_B_MINUS);
   encoder.clearCount();
   // ENCODER SETUP END
 
@@ -524,7 +521,7 @@ void set_zero() {
   stepper.setCurrentPosition(0);
 }
 
-void error_with(char *error_message) {
+void error_with(const char *error_message) {
   Serial.println("Error: " + String(error_message));
   status_error_message = error_message;
   current_state = error;

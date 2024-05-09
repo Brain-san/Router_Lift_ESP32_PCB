@@ -1,9 +1,32 @@
-void reset_settings_to_default() {
-  preferences.clear();
-  read_settings();
-}
+#ifndef SETTINGS_H
+#define SETTINGS_H
 
-void read_settings() {
+#include <Preferences.h>
+
+extern long  default_motor_steps_per_revolution;
+extern float default_motor_thread_pitch;
+extern long  default_motor_steps_slow;
+extern long  default_motor_steps_fast;
+extern long  default_motor_direction;
+extern long  default_motor_speed_maximal;
+extern long  default_motor_speed_toolchange;
+extern long  default_motor_acceleration;
+
+extern bool  default_sensor_end_stop_normally_closed;
+
+extern bool  default_sensor_tool_length_enabled_normally_closed;
+extern bool  default_sensor_tool_length_normally_closed;
+extern float default_sensor_tool_length_height;
+
+extern float default_workspace_height;
+extern bool  default_power_on_toolchange;
+
+extern long  default_auto_zero_speed;
+
+void reset_settings_to_default(Preferences& preferences);
+
+
+void read_settings(Preferences& preferences) {
   preference_motor_steps_per_revolution = preferences.getLong64("steps_per_rev", default_motor_steps_per_revolution);
   preference_motor_thread_pitch         = preferences.getFloat("thread_pitch", default_motor_thread_pitch);
   preference_motor_steps_slow           = preferences.getLong64("steps_slow", default_motor_steps_slow);
@@ -25,3 +48,5 @@ void read_settings() {
 
   preference_auto_zero_speed = preferences.getLong64("auto_zero_speed", default_auto_zero_speed);
 }
+
+#endif // SETTINGS_H

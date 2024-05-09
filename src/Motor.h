@@ -1,3 +1,10 @@
+#ifndef MOTOR_H
+#define MOTOR_H
+
+extern bool  status_motor_mode_constant;
+extern float status_target_lower_limit;
+void halt_motor();
+
 bool moves_motor_within_workspace() {
   if (status_motor_mode_constant) {
     // moving down with space below
@@ -73,3 +80,5 @@ void halt_motor() {
   stepper.setSpeed(0);
   stepper.move(0);
 }
+
+#endif // MOTOR_H

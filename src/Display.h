@@ -1,7 +1,50 @@
+#ifndef DISPLAY_H
+#define DISPLAY_H
+
+#include <U8g2lib.h>
+#include "PinDefinitions.h"
+#include "Sensors.h"
+#include "StateMachine.h"
+#include "UserInput.h"
+
+// Declare display_I2C as an extern variable to make it accessible in other files
+extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C display_I2C;
+extern AccelStepper stepper;
+extern float mm_per_step();
+extern float pos_in_mm;
+extern float position_in_mm;
+extern bool  status_target_active;
+extern float status_target_height;
+extern bool  status_slow_speed;
+extern bool  status_workspace_active;
+extern long  status_workspace_upper_limit;
+extern long  status_workspace_lower_limit;
+extern long  status_settings_menu_active_page;
+extern int   ux;
+extern int   uy;
+extern long  preference_motor_speed_maximal;
+extern long  preference_motor_acceleration;
+extern long  preference_motor_steps_per_revolution; 
+extern long  preference_motor_direction;
+extern float preference_motor_thread_pitch;
+extern long  preference_motor_steps_slow;
+extern long  preference_motor_steps_fast;
+extern long  preference_motor_speed_toolchange;
+extern long  preference_auto_zero_speed;
+extern float preference_workspace_height;
+extern bool  preference_power_on_toolchange;
+extern float preference_sensor_tool_length_height;
+extern bool  preference_sensor_tool_length_normally_closed;
+extern bool  preference_sensor_tool_length_enabled_normally_closed;
+extern bool  preference_sensor_end_stop_normally_closed;
+extern const char* status_error_message;
+
+//float status_target_lower_limit;
+//bool  status_target_active;
 void show_position_in_mm() {
   display_I2C.setFont(u8g2_font_helvB18_tf); // choose a suitable font
 
-  pos_in_mm = position_in_mm();
+  pos_in_mm = position_in_mm;
 
   if (pos_in_mm >= 0) {
     if (pos_in_mm < 10) {
@@ -213,3 +256,5 @@ void draw_loop(void * parameter) {
     draw();
   }
 }
+
+#endif // DISPLAY_H
